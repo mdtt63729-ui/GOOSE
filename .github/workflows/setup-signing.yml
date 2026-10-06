@@ -1,4 +1,4 @@
-name: One-Time Release Signing Setup
+name: Generate Android Signing Secrets
 
 on:
   workflow_dispatch:
@@ -16,6 +16,8 @@ jobs:
   generate-signing-credentials:
     name: Generate Production Keystore & Secret Values
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Setup Java 17
