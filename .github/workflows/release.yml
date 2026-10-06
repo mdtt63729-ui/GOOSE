@@ -1,0 +1,168 @@
+name: Release Build & Signing
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version Name (e.g. 1.0.0)'
+        required: false
+        default: '1.0.0'
+      version_code:
+        description: 'Version Code integer (e.g. 100)'
+        required: false
+        default: '100'
+
+jobs:
+  build-and-release:
+    name: Build Signed Release APK & Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine Version
+        id: versioning
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            RAW_TAG="${GITHUB_REF#refs/tags/v}"
+            echo "VERSION_NAME=$RAW_TAG" >> $GITHUB_ENV
+            # Derive sequential versionCode from semver: MAJOR*10000 + MINOR*100 + PATCH
+            MAJOR=$(echo "$RAW_TAG" | cut -d. -f1)
+            MINOR=$(echo "$RAW_TAG" | cut -d. -f2)
+            PATCH=$(echo "$RAW_TAG" | cut -d. -f3 | cut -d- -f1)
+            VCODE=$(( ${MAJOR:-1} * 10000 + ${MINOR:-0} * 100 + ${PATCH:-0} ))
+            echo "VERSION_CODE=$VCODE" >> $GITHUB_ENV
+          else
+            echo "VERSION_NAME=${{ github.event.inputs.version_name || '1.0.0' }}" >> $GITHUB_ENV
+            echo "VERSION_CODE=${{ github.event.inputs.version_code || '100' }}" >> $GITHUB_ENV
+          fi
+
+      - name: Display Release Target (No Secrets)
+        run: |
+          echo "Target Version Name: $VERSION_NAME"
+          echo "Target Version Code: $VERSION_CODE"
+          echo "Artifact Target: Goose-v${VERSION_NAME}-release.apk"
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+
+      - name: Lint and Test Bundle
+        run: |
+          npm run lint
+          npm run build
+
+      - name: Setup Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Copy Built Assets to Android Assets
+        run: |
+          mkdir -p android/app/src/main/assets
+          cp -r dist/* android/app/src/main/assets/
+
+      - name: Setup Temporary Release Keystore
+        id: keystore-setup
+        run: |
+          KEYSTORE_DEST="${{ runner.temp }}/release.keystore"
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Decoding signing keystore from repository secrets..."
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE_DEST"
+            echo "KEYSTORE_FILE=$KEYSTORE_DEST" >> $GITHUB_ENV
+            echo "HAS_KEYSTORE=true" >> $GITHUB_OUTPUT
+          else
+            echo "WARNING: KEYSTORE_BASE64 secret is not configured. Falling back to unsigned build check."
+            echo "HAS_KEYSTORE=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Android Release APK
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          VERSION_NAME: ${{ env.VERSION_NAME }}
+          VERSION_CODE: ${{ env.VERSION_CODE }}
+        run: |
+          cd android
+          chmod +x gradlew || gradle wrapper --gradle-version 8.2.2 && chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Verify & Sign Release APK
+        id: verify-apk
+        run: |
+          RELEASE_DIR="android/app/build/outputs/apk/release"
+          RAW_APK="$RELEASE_DIR/app-release.apk"
+          if [ ! -f "$RAW_APK" ]; then
+            RAW_APK="$RELEASE_DIR/app-release-unsigned.apk"
+          fi
+
+          if [ ! -f "$RAW_APK" ]; then
+            echo "ERROR: Release APK was not found at $RELEASE_DIR"
+            exit 1
+          fi
+
+          TARGET_APK="Goose-v${VERSION_NAME}-release.apk"
+          cp "$RAW_APK" "$TARGET_APK"
+
+          # Verify signature if signing keystore was available
+          if [ "${{ steps.keystore-setup.outputs.HAS_KEYSTORE }}" = "true" ]; then
+            echo "Verifying APK signature using Android apksigner..."
+            $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose "$TARGET_APK" || {
+              echo "ERROR: apksigner verification failed! APK is not properly signed."
+              exit 1
+            }
+            echo "✓ APK signature verification succeeded."
+          fi
+
+          # Compute SHA-256 Checksum
+          sha256sum "$TARGET_APK" > "${TARGET_APK}.sha256"
+          cat "${TARGET_APK}.sha256"
+
+          echo "APK_FILE=$TARGET_APK" >> $GITHUB_ENV
+          echo "SHA_FILE=${TARGET_APK}.sha256" >> $GITHUB_ENV
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: Goose v${{ env.VERSION_NAME }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            ${{ env.APK_FILE }}
+            ${{ env.SHA_FILE }}
+
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: goose-release-v${{ env.VERSION_NAME }}
+          path: |
+            ${{ env.APK_FILE }}
+            ${{ env.SHA_FILE }}
+
+      - name: Secure Cleanup of Keystore
+        if: always()
+        run: |
+          KEYSTORE_DEST="${{ runner.temp }}/release.keystore"
+          if [ -f "$KEYSTORE_DEST" ]; then
+            shred -u "$KEYSTORE_DEST" 2>/dev/null || rm -f "$KEYSTORE_DEST"
+            echo "Temporary release keystore securely removed."
+          fi

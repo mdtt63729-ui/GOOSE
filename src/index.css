@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-poppins: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Material 3 Light (Default Goose Slate-Teal) */
+    --color-primary: #006874;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #97f0ff;
+    --color-on-primary-container: #001f24;
+
+    --color-secondary: #4a6267;
+    --color-on-secondary: #ffffff;
+    --color-secondary-container: #cde7ec;
+    --color-on-secondary-container: #051f23;
+
+    --color-tertiary: #525e7d;
+    --color-on-tertiary: #ffffff;
+    --color-tertiary-container: #dae2ff;
+    --color-on-tertiary-container: #0e1b37;
+
+    --color-error: #ba1a1a;
+    --color-on-error: #ffffff;
+    --color-error-container: #ffdad6;
+    --color-on-error-container: #410002;
+
+    --color-background: #fbfcfe;
+    --color-on-background: #191c1d;
+    
+    --color-surface: #fbfcfe;
+    --color-on-surface: #191c1d;
+    --color-surface-variant: #dbe4e6;
+    --color-on-surface-variant: #3f484a;
+
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #f5f6f8;
+    --color-surface-container: #eff1f2;
+    --color-surface-container-high: #e9ebec;
+    --color-surface-container-highest: #e3e5e7;
+
+    --color-outline: #6f797a;
+    --color-outline-variant: #bfc8ca;
+
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Material 3 Dark (Default Goose Dark) */
+  .dark {
+    --color-primary: #4fd8eb;
+    --color-on-primary: #00363d;
+    --color-primary-container: #004f58;
+    --color-on-primary-container: #97f0ff;
+
+    --color-secondary: #b1cbd0;
+    --color-on-secondary: #1c3438;
+    --color-secondary-container: #334b4f;
+    --color-on-secondary-container: #cde7ec;
+
+    --color-tertiary: #bac6ea;
+    --color-on-tertiary: #24304d;
+    --color-tertiary-container: #3b4664;
+    --color-on-tertiary-container: #dae2ff;
+
+    --color-error: #ffb4ab;
+    --color-on-error: #690005;
+    --color-error-container: #93000a;
+    --color-on-error-container: #ffdad6;
+
+    --color-background: #101415;
+    --color-on-background: #e0e3e3;
+
+    --color-surface: #101415;
+    --color-on-surface: #e0e3e3;
+    --color-surface-variant: #3f484a;
+    --color-on-surface-variant: #bfc8ca;
+
+    --color-surface-container-lowest: #0b0f10;
+    --color-surface-container-low: #191c1d;
+    --color-surface-container: #1d2021;
+    --color-surface-container-high: #272a2c;
+    --color-surface-container-highest: #323536;
+
+    --color-outline: #899294;
+    --color-outline-variant: #3f484a;
+  }
+
+  /* Dynamic Monet Palettes (when dynamic color enabled) */
+  /* Ocean Blue Palette */
+  [data-dynamic-palette="ocean"] {
+    --color-primary: #1a60a5;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #d3e4ff;
+    --color-on-primary-container: #001c3b;
+    --color-surface-container-low: #f0f4f9;
+    --color-surface-container: #e8eef6;
+    --color-surface-container-high: #e2e8f0;
+  }
+  .dark[data-dynamic-palette="ocean"] {
+    --color-primary: #a2c9ff;
+    --color-on-primary: #00315f;
+    --color-primary-container: #004785;
+    --color-on-primary-container: #d3e4ff;
+    --color-surface-container-low: #171c22;
+    --color-surface-container: #1b2028;
+    --color-surface-container-high: #252b34;
+  }
+
+  /* Sage / Botanical Green Palette */
+  [data-dynamic-palette="sage"] {
+    --color-primary: #386a20;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #b8f397;
+    --color-on-primary-container: #042100;
+    --color-surface-container-low: #f2f5ee;
+    --color-surface-container: #eaf0e5;
+    --color-surface-container-high: #e2e8dd;
+  }
+  .dark[data-dynamic-palette="sage"] {
+    --color-primary: #9cd67d;
+    --color-on-primary: #123800;
+    --color-primary-container: #235108;
+    --color-on-primary-container: #b8f397;
+    --color-surface-container-low: #161d14;
+    --color-surface-container: #1b2219;
+    --color-surface-container-high: #252d22;
+  }
+
+  /* Coral / Amber Palette */
+  [data-dynamic-palette="coral"] {
+    --color-primary: #9c4327;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #ffdbd1;
+    --color-on-primary-container: #3b0900;
+    --color-surface-container-low: #f7f1ee;
+    --color-surface-container: #f2ebe7;
+    --color-surface-container-high: #eae2de;
+  }
+  .dark[data-dynamic-palette="coral"] {
+    --color-primary: #ffb5a0;
+    --color-on-primary: #5e1601;
+    --color-primary-container: #7c2d13;
+    --color-on-primary-container: #ffdbd1;
+    --color-surface-container-low: #1f1715;
+    --color-surface-container: #261e1b;
+    --color-surface-container-high: #312825;
+  }
+
+  /* Lavender / Purple Palette */
+  [data-dynamic-palette="lavender"] {
+    --color-primary: #6c4ea2;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #eedcff;
+    --color-on-primary-container: #270057;
+    --color-surface-container-low: #f4f0f7;
+    --color-surface-container: #eeeaf3;
+    --color-surface-container-high: #e7e2ec;
+  }
+  .dark[data-dynamic-palette="lavender"] {
+    --color-primary: #d9b9ff;
+    --color-on-primary: #3d1c71;
+    --color-primary-container: #543589;
+    --color-on-primary-container: #eedcff;
+    --color-surface-container-low: #1c1622;
+    --color-surface-container: #221c29;
+    --color-surface-container-high: #2c2535;
+  }
+
+  html, body {
+    font-family: var(--font-poppins);
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+/* Custom scrollbar for console and list */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline);
+}
+
+/* Material 3 Ripple / Touch feedback helper */
+.m3-pressable {
+  transition: transform 120ms cubic-bezier(0.2, 0, 0, 1), background-color 150ms ease, opacity 120ms ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.m3-pressable:active {
+  transform: scale(0.97);
+}
+
+/* Android system gesture bar pill */
+.android-gesture-pill {
+  width: 72px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: var(--color-on-surface);
+  opacity: 0.35;
+  margin: 8px auto 4px auto;
+}

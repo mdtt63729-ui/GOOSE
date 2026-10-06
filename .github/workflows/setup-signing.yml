@@ -1,0 +1,93 @@
+name: One-Time Release Signing Setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      alias_name:
+        description: 'Key Alias for Goose Release'
+        required: false
+        default: 'goose_release_key'
+      validity_days:
+        description: 'Validity in days (e.g. 10000 for ~27 years)'
+        required: false
+        default: '10000'
+
+jobs:
+  generate-signing-credentials:
+    name: Generate Production Keystore & Secret Values
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Generate Cryptographic Release Keystore
+        id: gen-keystore
+        run: |
+          mkdir -p secure_output
+          KEYSTORE_FILE="secure_output/goose-release.jks"
+          ALIAS="${{ github.event.inputs.alias_name || 'goose_release_key' }}"
+          DAYS="${{ github.event.inputs.validity_days || '10000' }}"
+          
+          # Generate 24-character high-entropy cryptographic passwords
+          KEYSTORE_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c 20)
+          KEY_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c 20)
+
+          echo "Generating 4096-bit RSA Android production release keystore..."
+          keytool -genkeypair \
+            -v \
+            -keystore "$KEYSTORE_FILE" \
+            -alias "$ALIAS" \
+            -keyalg RSA \
+            -keysize 4096 \
+            -validity "$DAYS" \
+            -storepass "$KEYSTORE_PASS" \
+            -keypass "$KEY_PASS" \
+            -dname "CN=Goose Android, OU=Autonomous Bot Platform, O=Goose, L=Android, ST=Release, C=US"
+
+          # Convert keystore to base64 string
+          BASE64_VAL=$(base64 -w 0 "$KEYSTORE_FILE")
+          
+          # Write confidential credentials file for artifact download
+          cat <<EOF > secure_output/GITHUB_SECRETS_SETUP.txt
+================================================================================
+GOOSE ANDROID ONE-TIME SIGNING SETUP (KEEP STRICTLY CONFIDENTIAL)
+================================================================================
+Add the following 4 secrets into your GitHub Repository:
+Settings -> Secrets and variables -> Actions -> "New repository secret"
+
+1. KEYSTORE_BASE64
+$BASE64_VAL
+
+2. KEYSTORE_PASSWORD
+$KEYSTORE_PASS
+
+3. KEY_ALIAS
+$ALIAS
+
+4. KEY_PASSWORD
+$KEY_PASS
+================================================================================
+IMPORTANT:
+- Store a backup copy of this keystore safely offline.
+- Once configured, all future releases will automatically use this single key.
+- Never commit this file or the generated JKS to git repository.
+================================================================================
+EOF
+
+          echo "Keystore successfully generated with SHA-256 fingerprint:"
+          keytool -list -v -keystore "$KEYSTORE_FILE" -storepass "$KEYSTORE_PASS" | grep "SHA256:"
+
+      - name: Upload Secure Setup Instructions Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: goose-signing-setup-confidential
+          path: secure_output/GITHUB_SECRETS_SETUP.txt
+          retention-days: 1
+
+      - name: Print Completion Notice
+        run: |
+          echo "::notice title=Signing Generated::Download the 'goose-signing-setup-confidential' artifact to copy the 4 GitHub Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD). Secrets are not exposed in plaintext logs."

@@ -1,0 +1,6 @@
+{
+  "name": "Goose",
+  "description": "Minimal, polished Material 3 Android bot manager UI foundation with native bridge and lifecycle controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
